@@ -1,12 +1,13 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { computed } from "@preact/signals-react";
+import { useSignals, useComputed } from "@preact/signals-react/runtime";
 
 export default memo(({ data, isConnectable }) => {
     var test = data.label;
 
     if (data.entity) {
-        test = computed(() => String(data.entity.onUpdated.value.getPrimaryInputState().value) + String(data.entity.onUpdated.value.getPrimaryInputState().unit))
+        test = String(data.entity.getPrimaryInputState().value) + String(data.entity.getPrimaryInputState().unit);
     }
 
     return (

@@ -41,23 +41,16 @@ const initialEdges = [
   { id: 'e3-4', data: { animationSpeed: "1s" }, type: 'flowEdge', source: '3', target: '4', sourceHandle: 'IO_Left_Bottom', targetHandle: 'IO_Top_Right' }
 ];
 
-function App({ cardName, hass, config, cardSize }: ReactCardProps) {
+function App({ cardName, hass, config, cardSize, energySelection, entities, nodes }: ReactCardProps) {
   const renderRef = useRef(0);
   renderRef.current++;
 
-  var SolarEntity = new ElectricityEntity(config, hass, "Solar");
-
-  var GridNode = { id: '1', type: 'energyElementNode', position: { x: 0, y: 100 }, data: { label: 'Grid' } };
-  var SolarNode = { id: '2', type: 'energyElementNode', position: { x: 100, y: 0 }, data: { label: 'Solar', entity: SolarEntity } };
-  var BatteryNode = { id: '3', type: 'energyElementNode', position: { x: 200, y: 100 }, data: { label: 'Battery' } };
-  var HomeNode = { id: '4', type: 'energyElementNode', position: { x: 100, y: 200 }, data: { label: 'Home' } };
-
-  var initialNodes = [GridNode, SolarNode, BatteryNode, HomeNode];
+  console.log("Nodes", nodes);
 
   return (
     <ha-card style={{ padding: "1rem" }}>
       <div style={{ width: '400px', height: '400px' }}>
-        <ReactFlow zoomOnDoubleClick={false} zoomOnPinch={false} panOnDrag={false} zoomOnScroll={false} nodes={initialNodes} edges={initialEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} connectionMode='loose' />
+        <ReactFlow zoomOnDoubleClick={false} zoomOnPinch={false} panOnDrag={false} zoomOnScroll={false} nodes={nodes} edges={initialEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} connectionMode='loose' />
       </div>
     </ha-card>
   );

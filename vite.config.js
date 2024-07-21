@@ -4,8 +4,9 @@ import { shadowStyle } from 'vite-plugin-shadow-style';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(),
-  shadowStyle()],
+  plugins: [
+    react(),
+    shadowStyle()],
   build: {
     rollupOptions: {
       output: {
