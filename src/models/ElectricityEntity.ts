@@ -31,6 +31,12 @@ export interface StatisticValue {
 };
 
 export abstract class ElectricityEntity {
+    //References to required entities
+    protected static Grid: GridEntity;
+    protected static Battery: BatteryEntity;
+    protected static Solar: SolarEntity;
+    protected static Home: HomeEntity;
+
     //External data
     private config: Signal<unknown>;
     private hass: Signal<unknown>;
@@ -45,14 +51,14 @@ export abstract class ElectricityEntity {
     protected isSubHome: boolean = false;
 
     //Extracted Configuration
-    private primaryInputEntityId: any;
+    protected primaryInputEntityId: any;
     private primaryOutputEntityId: any;
     private secondaryEntityId: any;
     private primaryUsesDatePicker: boolean;
     private secondaryUsesDatePicker: boolean;
-    private kiloThreshold: any;
-    private megaThreshold: any;
-    private gigaThreshold: any;
+    protected kiloThreshold: any;
+    protected megaThreshold: any;
+    protected gigaThreshold: any;
     private haIcon: any;
     private solarColor: any;
     private gridColor: any;
@@ -221,20 +227,20 @@ export abstract class ElectricityEntity {
     }
 
 
-    public getPrimaryInputState(): ElectricityState {
+    public getPrimaryInputState(): ElectricityState | GeneralState {
         var result;
 
         try {
             result = this.primaryStateInputUnit.thresholdIfElectricity(this.primaryStateInput, this.primaryInputAvailable, this.kiloThreshold, this.megaThreshold, this.gigaThreshold);
         }
         catch {
-            result = { value: NaN, unit: "Wrong unit", available: true };
+            result = { value: NaN, unit: "Wrong unit", available: false };
         }
 
         return result;
     }
 
-    public getPrimaryOutputState(): ElectricityState {
+    public getPrimaryOutputState(): ElectricityState | GeneralState {
         var result;
 
         try {
@@ -295,6 +301,7 @@ export class SolarEntity extends ElectricityEntity {
     constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
         super(config, hass, energySelection, "solar");
         this.isSolar = true;
+        ElectricityEntity.Solar = this;
     }
 }
 
@@ -303,6 +310,7 @@ export class GridEntity extends ElectricityEntity {
     constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
         super(config, hass, energySelection, "grid");
         this.isGrid = true;
+        ElectricityEntity.Grid = this;
     }
 }
 
@@ -311,6 +319,7 @@ export class BatteryEntity extends ElectricityEntity {
     constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
         super(config, hass, energySelection, "battery");
         this.isBattery = true;
+        ElectricityEntity.Battery = this;
     }
 }
 
@@ -319,6 +328,60 @@ export class HomeEntity extends ElectricityEntity {
     constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
         super(config, hass, energySelection, "home");
         this.isHome = true;
+        ElectricityEntity.Home = this;
+    }
+
+    public getPrimaryInputState(): ElectricityState | GeneralState {
+        if (this.primaryInputEntityId != null) {
+            return super.getPrimaryInputState();
+        }
+
+        if (!ElectricityEntity.Grid || !ElectricityEntity.Solar || !ElectricityEntity.Battery) {
+            return { value: NaN, unit: "", available: false };
+        }
+
+        var sum = 0;
+
+        var gridInput = ElectricityEntity.Grid.getPrimaryInputState();
+        var gridOutput = ElectricityEntity.Grid.getPrimaryOutputState();
+        var solarOutput = ElectricityEntity.Solar.getPrimaryOutputState();
+        var batteryOutput = ElectricityEntity.Battery.getPrimaryOutputState();
+        var batteryInput = ElectricityEntity.Battery.getPrimaryInputState();
+
+        var gridInputUnit = new StateUnit();
+        gridInputUnit.setUnitFromConfig(gridInput.unit);
+        var gridOutputUnit = new StateUnit();
+        gridOutputUnit.setUnitFromConfig(gridOutput.unit);
+        var solarUnit = new StateUnit();
+        solarUnit.setUnitFromConfig(solarOutput.unit);
+        var batteryOutputUnit = new StateUnit();
+        batteryOutputUnit.setUnitFromConfig(batteryOutput.unit);
+        var batteryInputUnit = new StateUnit();
+        batteryInputUnit.setUnitFromConfig(batteryInput.unit);
+
+        if (!Number.isNaN(gridOutput.value) && !Number.isNaN(solarOutput.value) && !Number.isNaN(batteryOutput.value)) {
+            sum += gridOutputUnit.convertToBaseUnit(gridOutput.value);
+            sum += solarUnit.convertToBaseUnit(solarOutput.value);
+            sum += batteryOutputUnit.convertToBaseUnit(batteryOutput.value);
+            sum -= batteryInputUnit.convertToBaseUnit(batteryInput.value);
+            sum -= gridInputUnit.convertToBaseUnit(gridInput.value);
+
+            var unit = new StateUnit();
+
+            try {
+                if (gridOutputUnit.isPower())
+                    unit.setUnitFromConfig(ElectricityUnit.W);
+                else
+                    unit.setUnitFromConfig(ElectricityUnit.Wh);
+
+                return unit.thresholdIfElectricity(sum, true, this.kiloThreshold, this.megaThreshold, this.gigaThreshold);
+            }
+            catch {
+                return { value: NaN, unit: "", available: false };
+            }
+        }
+
+        return { value: NaN, unit: "", available: true };
     }
 }
 

@@ -84,7 +84,7 @@ export class StateUnit {
         return unit == ElectricityUnit.GW || unit == ElectricityUnit.MW || unit == ElectricityUnit.kW || unit == ElectricityUnit.W;
     }
 
-    private convertToBaseUnit(value: number): number {
+    public convertToBaseUnit(value: number): number {
         if (!this.isElectricity()) {
             throw "Is Not Electricity";
         }
