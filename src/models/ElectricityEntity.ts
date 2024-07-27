@@ -1,10 +1,16 @@
 import { Signal } from "@preact/signals-react";
-import { ElectricityUnit } from "./ElectricityUnit";
+import { ElectricityUnit, StateUnit } from "./ElectricityUnit";
 import { addHours, differenceInDays } from 'date-fns';
 
 export interface ElectricityState {
     value: number;
     unit: ElectricityUnit;
+    available: boolean;
+};
+
+export interface GeneralState {
+    value: number;
+    unit: string;
     available: boolean;
 };
 
@@ -24,12 +30,19 @@ export interface StatisticValue {
     state: number | null;
 };
 
-export class ElectricityEntity {
+export abstract class ElectricityEntity {
     //External data
     private config: Signal<unknown>;
     private hass: Signal<unknown>;
     private configKey: string;
     private energySelection: Signal<unknown>;
+
+    //To be set by subclasses
+    protected isSolar: boolean = false;
+    protected isGrid: boolean = false;
+    protected isBattery: boolean = false;
+    protected isHome: boolean = false;
+    protected isSubHome: boolean = false;
 
     //Extracted Configuration
     private primaryInputEntityId: any;
@@ -37,17 +50,26 @@ export class ElectricityEntity {
     private secondaryEntityId: any;
     private primaryUsesDatePicker: boolean;
     private secondaryUsesDatePicker: boolean;
-    private isPower: boolean;
     private kiloThreshold: any;
     private megaThreshold: any;
     private gigaThreshold: any;
+    private haIcon: any;
+    private solarColor: any;
+    private gridColor: any;
+    private batteryColor: any;
+    private colorOverride: any;
+
+
 
     //Extracted State
     private primaryStateInput: number;
+    private primaryStateInputUnit: StateUnit = new StateUnit();
     private primaryStateOutput: number;
+    private primaryStateOutputUnit: StateUnit = new StateUnit();
     private primaryInputAvailable: boolean;
     private primaryOutputAvailable: boolean;
     private secondaryState: number;
+    private secondaryStateUnit: StateUnit = new StateUnit();
     private secondaryAvailable: boolean;
 
     //Signals
@@ -69,19 +91,25 @@ export class ElectricityEntity {
             return;
         }
 
-
-
-
         this.primaryInputEntityId = this.configKey ? this.config.value[this.configKey]["primaryInputEntity"] : null;
         this.primaryOutputEntityId = this.configKey ? this.config.value[this.configKey]["primaryOutputEntity"] : null;
-        this.secondaryEntityId = this.configKey ? this.config.value[this.configKey]["secondaryEntityId"] : null;
+        this.secondaryEntityId = this.configKey ? this.config.value[this.configKey]["secondaryEntity"] : null;
         this.secondaryUsesDatePicker = this.configKey ? this.config.value[this.configKey]["secondaryUsesDatePicker"] : false;
 
         this.primaryUsesDatePicker = this.config.value["primaryUsesDatePicker"];
-        this.isPower = this.config.value["readingIsPower"];
         this.kiloThreshold = this.config.value["kiloThreshold"] ?? 1000;
         this.megaThreshold = this.config.value["megaThreshold"] ?? 1000000;
         this.gigaThreshold = this.config.value["gigaThreshold"] ?? 1000000000;
+        this.haIcon = this.configKey ? this.config.value[this.configKey]["icon"] : "";
+        this.solarColor = this.config.value["solarColor"] ?? "orange";
+        this.gridColor = this.config.value["gridColor"] ?? "blue";
+        this.batteryColor = this.config.value["batteryColor"] ?? "red";
+        this.colorOverride = this.configKey ? this.config.value[this.configKey]["colorOverride"] : null;
+
+        this.primaryStateInputUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["primaryInputUnit"] : null);
+        this.primaryStateOutputUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["primaryOutputUnit"] : null);
+        this.secondaryStateUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["secondaryUnit"] : null);
+
     }
 
     private async updateState(): Promise<void> {
@@ -99,6 +127,9 @@ export class ElectricityEntity {
         this.primaryOutputAvailable = false;
         this.secondaryAvailable = false;
 
+        this.extractUnitsFromStates(stateObjPrimaryInput, stateObjPrimaryOutput, stateObjSecondary);
+
+        //If not datepicker is used, directly pull data from hass state
         if (stateObjPrimaryInput && !this.primaryUsesDatePicker) {
             this.primaryInputAvailable = true;
             this.primaryStateInput = Number(stateObjPrimaryInput.state);
@@ -111,31 +142,36 @@ export class ElectricityEntity {
 
         if (stateObjSecondary && !this.secondaryUsesDatePicker) {
             this.secondaryAvailable = true;
-            this.primaryStateOutput = Number(stateObjSecondary.state);
+            this.secondaryState = Number(stateObjSecondary.state);
         }
 
+        //Otherwise get accumulated states from hass webservice if datepicker is used
         if (stateObjPrimaryInput && this.primaryUsesDatePicker) {
             var accumulatedStats = await this.getDateSelectedStatisticForEntities([this.primaryInputEntityId]);
-            console.log(accumulatedStats);
             this.primaryStateInput = accumulatedStats && accumulatedStats[0] ? accumulatedStats[0] : 0;
             this.primaryInputAvailable = accumulatedStats && accumulatedStats[0] ? true : false;
         }
 
         if (stateObjPrimaryOutput && this.primaryUsesDatePicker) {
             var accumulatedStats = await this.getDateSelectedStatisticForEntities([this.primaryOutputEntityId]);
-            console.log(accumulatedStats);
             this.primaryStateOutput = accumulatedStats && accumulatedStats[0] ? accumulatedStats[0] : 0;
             this.primaryOutputAvailable = accumulatedStats && accumulatedStats[0] ? true : false;
         }
 
         if (stateObjSecondary && this.secondaryUsesDatePicker) {
             var accumulatedStats = await this.getDateSelectedStatisticForEntities([this.secondaryEntityId]);
-            console.log(accumulatedStats);
             this.secondaryState = accumulatedStats && accumulatedStats[0] ? accumulatedStats[0] : 0;
             this.secondaryAvailable = accumulatedStats && accumulatedStats[0] ? true : false;
         }
 
         this.onUpdated.value = this.onUpdated.value++;
+    }
+
+    private extractUnitsFromStates(primaryInput: any, primaryOutput: any, secondary: any) {
+        console.log("ExtractUnitsFromHass", [primaryInput, primaryOutput, secondary]);
+        this.primaryStateInputUnit.setUnitFromHass(primaryInput ? primaryInput['attributes'] ? primaryInput['attributes']['unit_of_measurement'] : null : null);
+        this.primaryStateOutputUnit.setUnitFromHass(primaryOutput ? primaryOutput['attributes'] ? primaryOutput['attributes']['unit_of_measurement'] : null : null);
+        this.secondaryStateUnit.setUnitFromHass(secondary ? secondary['attributes'] ? secondary['attributes']['unit_of_measurement'] : null : null);
     }
 
     private async getDateSelectedStatisticForEntities(entitiyIds: string[]): Promise<number[]> {
@@ -184,45 +220,113 @@ export class ElectricityEntity {
         }) as Statistics;
     }
 
-    private thresholdIfAvailable(value: number, available: boolean): ElectricityState {
-        if (!available) {
-            return { value: null, unit: null, available: false };
-        }
-
-        var result: number;
-        var unit: ElectricityUnit;
-
-        if (value > this.gigaThreshold) {
-            result = value / 1000000000;
-            unit = this.isPower ? ElectricityUnit.GW : ElectricityUnit.GWh;
-        }
-        else if (value > this.megaThreshold) {
-            result = value / 1000000;
-            unit = this.isPower ? ElectricityUnit.MW : ElectricityUnit.MWh;
-        }
-        else if (value > this.kiloThreshold) {
-            result = value / 1000;
-            unit = this.isPower ? ElectricityUnit.kW : ElectricityUnit.kWh;
-        }
-        else {
-            result = value;
-            unit = this.isPower ? ElectricityUnit.W : ElectricityUnit.Wh;
-        }
-
-        return { value: result, unit: unit, available: true };
-    }
 
     public getPrimaryInputState(): ElectricityState {
-        console.log("Primary Inputstate", this);
-        return this.thresholdIfAvailable(this.primaryStateInput, this.primaryInputAvailable);
+        var result;
+
+        try {
+            result = this.primaryStateInputUnit.thresholdIfElectricity(this.primaryStateInput, this.primaryInputAvailable, this.kiloThreshold, this.megaThreshold, this.gigaThreshold);
+        }
+        catch {
+            result = { value: NaN, unit: "Wrong unit", available: true };
+        }
+
+        return result;
     }
 
     public getPrimaryOutputState(): ElectricityState {
-        return this.thresholdIfAvailable(this.primaryStateOutput, this.primaryOutputAvailable);
+        var result;
+
+        try {
+            result = this.primaryStateOutputUnit.thresholdIfElectricity(this.primaryStateOutput, this.primaryOutputAvailable, this.kiloThreshold, this.megaThreshold, this.gigaThreshold);
+        }
+        catch {
+            result = { value: NaN, unit: "Wrong unit", available: false };
+        }
+
+        return result;
     }
 
-    public getSecondaryState(): ElectricityState {
-        return this.thresholdIfAvailable(this.secondaryState, this.secondaryAvailable);
+    public getSecondaryState(): ElectricityState | GeneralState {
+        if (this.secondaryEntityId == null) {
+            return null;
+        }
+
+        var result;
+
+        try {
+            result = this.secondaryStateUnit.thresholdIfElectricity(this.secondaryState, this.secondaryAvailable, this.kiloThreshold, this.megaThreshold, this.gigaThreshold);
+        }
+        catch {
+            result = { value: Math.round(this.secondaryState * 10) / 10, unit: this.secondaryStateUnit.getUnitString(), available: this.secondaryAvailable };
+        }
+
+        return result;
+
+    }
+
+    public getSolarColor(): any {
+        return this.solarColor;
+    }
+
+    public getGridColor(): any {
+        return this.gridColor;
+    }
+
+    public getBatteryColor(): any {
+        return this.batteryColor;
+    }
+
+    public getColorOverride(): any {
+        return this.colorOverride;
+    }
+
+    public getIcon(): any {
+        return this.haIcon;
+    }
+
+    public getNodeTypeDescription(): any {
+        return { isSolar: this.isSolar, isGrid: this.isGrid, isBattery: this.isBattery, isHome: this.isHome, isSubHome: this.isSubHome };
+    }
+}
+
+export class SolarEntity extends ElectricityEntity {
+
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
+        super(config, hass, energySelection, "solar");
+        this.isSolar = true;
+    }
+}
+
+export class GridEntity extends ElectricityEntity {
+
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
+        super(config, hass, energySelection, "grid");
+        this.isGrid = true;
+    }
+}
+
+export class BatteryEntity extends ElectricityEntity {
+
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
+        super(config, hass, energySelection, "battery");
+        this.isBattery = true;
+    }
+}
+
+export class HomeEntity extends ElectricityEntity {
+
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
+        super(config, hass, energySelection, "home");
+        this.isHome = true;
+    }
+}
+
+export class SubHomeEntity extends ElectricityEntity {
+
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, configKey: string) {
+        super(config, hass, energySelection, configKey);
+        this.isSubHome = true;
     }
 }
 

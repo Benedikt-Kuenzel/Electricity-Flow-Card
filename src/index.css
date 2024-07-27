@@ -37,8 +37,8 @@
   font-size: 10px;
   text-align: center;
   color: white;
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   border-width: 0px;
   display: flex;
@@ -55,7 +55,7 @@ svg {
 }
 
 circle {
-  stroke-width: 4px;
+  stroke-width: 3px;
   fill: transparent;
 }
 

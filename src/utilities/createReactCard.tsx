@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { Signal } from "@preact/signals-react";
-import { ElectricityEntity } from "../models/ElectricityEntity";
+import { ElectricityEntity, SolarEntity, GridEntity, BatteryEntity, HomeEntity, SubHomeEntity } from "../models/ElectricityEntity";
 
 export type ReactCardProps = {
     hass: Signal<unknown>;
@@ -56,11 +56,11 @@ const createReactCard = (
         }
 
         createEntities() {
-            var SolarEntity = new ElectricityEntity(signals.config, signals.hass, signals.energySelection, "solar");
-            var GridEntity = new ElectricityEntity(signals.config, signals.hass, signals.energySelection, "grid");
-            var BatteryEntity = new ElectricityEntity(signals.config, signals.hass, signals.energySelection, "battery");
-            var HomeEntity = new ElectricityEntity(signals.config, signals.hass, signals.energySelection, "home");
-            signals.entities = [GridEntity, SolarEntity, BatteryEntity, HomeEntity];
+            var Solar: SolarEntity = new SolarEntity(signals.config, signals.hass, signals.energySelection);
+            var Grid: GridEntity = new GridEntity(signals.config, signals.hass, signals.energySelection);
+            var Battery: BatteryEntity = new BatteryEntity(signals.config, signals.hass, signals.energySelection);
+            var Home: HomeEntity = new HomeEntity(signals.config, signals.hass, signals.energySelection);
+            signals.entities = [Grid, Solar, Battery, Home];
 
             signals.entities.forEach(entity => {
                 entity.onUpdated.subscribe(() => this.render());

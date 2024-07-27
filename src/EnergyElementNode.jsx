@@ -1,13 +1,54 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { computed } from "@preact/signals-react";
-import { useSignals, useComputed } from "@preact/signals-react/runtime";
 
 export default memo(({ data, isConnectable }) => {
     var test = data.label;
 
+    var secondary = null;
+    var primaryInput = null;
+    var primaryOutput = null;
+    var icon = null;
+
+    var colorOverride = null;
+    var solarColor = null;
+    var gridColor = null;
+    var batteryColor = null;
+    var typeDescription = null;
+
+    var primaryTopString = "";
+    var primaryBottomString = "";
+    var primaryTotalString = null;
+
     if (data.entity) {
         test = String(data.entity.getPrimaryInputState().value) + String(data.entity.getPrimaryInputState().unit);
+
+        primaryInput = data.entity.getPrimaryInputState();
+        primaryOutput = data.entity.getPrimaryOutputState();
+        secondary = data.entity.getSecondaryState();
+
+        colorOverride = data.entity.getColorOverride();
+        solarColor = data.entity.getSolarColor();
+        gridColor = data.entity.getGridColor();
+        batteryColor = data.entity.getBatteryColor();
+
+        icon = data.entity.getIcon();
+
+        typeDescription = data.entity.getNodeTypeDescription();
+
+        if (typeDescription.isGrid) {
+            primaryTopString = "← " + String(primaryInput.value) + " " + String(primaryInput.unit);
+            primaryBottomString = "→ " + String(primaryOutput.value) + " " + String(primaryOutput.unit);
+        }
+        else if (typeDescription.isBattery) {
+            primaryTopString = "← " + String(primaryOutput.value) + " " + String(primaryOutput.unit);
+            primaryBottomString = "→ " + String(primaryInput.value) + " " + String(primaryInput.unit);
+        }
+        else if (typeDescription.isSolar) {
+            primaryTotalString = primaryOutput.available ? String(primaryOutput.value) + " " + String(primaryOutput.unit) : "-";
+        }
+        else if (typeDescription.isHome || typeDescription.isSubHome) {
+            primaryTotalString = primaryInput.available ? String(primaryInput.value) + " " + String(primaryInput.unit) : "-";
+        }
     }
 
     return (
@@ -122,14 +163,16 @@ export default memo(({ data, isConnectable }) => {
                 isConnectableEnd={true}
             />
 
+            {secondary != null &&
+                <div style={{ lineHeight: '12px', fontSize: '11px' }}>
+                    {secondary.available ? String(secondary.value) + String(secondary.unit) : "-"}
+                </div>}
             <div>
-                2kwh
+                <ha-icon icon={icon}></ha-icon>
             </div>
-            <div>
-                {test}
-            </div>
-            <div>
-                22kwh
+            <div style={{ lineHeight: '12px', fontSize: '11px' }}>
+                {primaryTotalString != null && primaryTotalString}
+                {primaryTotalString == null && <>{primaryTopString}  <br /> {primaryBottomString}</>}
             </div>
 
             <svg viewBox='0 0 100 100'>
