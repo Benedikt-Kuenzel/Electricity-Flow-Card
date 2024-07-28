@@ -17,6 +17,10 @@ export default function registerCard(
             energySelection: signal({}),
             entities: [],
             nodes: [],
+            edges: [],
+            subEntities: [],
+            subEdges: [],
+            subNodes: []
         } as const satisfies ReactCardProps;
         cardStates.value = { ...cardStates.value, [cardName]: signals } as const;
     }

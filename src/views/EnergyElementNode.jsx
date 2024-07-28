@@ -1,5 +1,8 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
+import electricityCircle from './electricityCircle';
+
+
 
 export default memo(({ data, isConnectable }) => {
     var test = data.label;
@@ -18,6 +21,7 @@ export default memo(({ data, isConnectable }) => {
     var primaryTopString = "";
     var primaryBottomString = "";
     var primaryTotalString = null;
+    var circle = null;
 
     if (data.entity) {
         test = String(data.entity.getPrimaryInputState().value) + String(data.entity.getPrimaryInputState().unit);
@@ -48,6 +52,23 @@ export default memo(({ data, isConnectable }) => {
         }
         else if (typeDescription.isHome || typeDescription.isSubHome) {
             primaryTotalString = primaryInput.available ? String(primaryInput.value) + " " + String(primaryInput.unit) : "-";
+        }
+
+        if (typeDescription.isHome) {
+            var fromOtherEntities = data.entity.getElectricityInSystemFromSolarGridAndBattery();
+            circle = electricityCircle(fromOtherEntities.fromGrid, fromOtherEntities.fromBattery, fromOtherEntities.fromSolar, gridColor, batteryColor, solarColor, colorOverride);
+        }
+        else if (typeDescription.isBattery) {
+            circle = electricityCircle(0, 0, 0, null, null, null, batteryColor);
+        }
+        else if (typeDescription.isGrid) {
+            circle = electricityCircle(0, 0, 0, null, null, null, gridColor);
+        }
+        else if (typeDescription.isSolar) {
+            circle = electricityCircle(0, 0, 0, null, null, null, solarColor);
+        }
+        else {
+            circle = electricityCircle(0, 0, 0, null, null, null, colorOverride ? colorOverride : 'pink');
         }
     }
 
@@ -176,9 +197,7 @@ export default memo(({ data, isConnectable }) => {
             </div>
 
             <svg viewBox='0 0 100 100'>
-                <circle cx='50' cy='50' r='45' id='green' />
-                <circle cx='50' cy='50' r='45' id='blue' />
-                <circle cx='50' cy='50' r='45' id='orange' />
+                {circle}
             </svg>
         </>
     );

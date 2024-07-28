@@ -11,7 +11,7 @@ import './FlowEdge.css';
 
 export default function CustomEdge({
     id,
-    data = { animationSpeed: "2s" },
+    data = { animationSpeed: "2s", lineColor: 'white', dotColor: 'orange', begin: 0 },
     sourceX,
     sourceY,
     targetX,
@@ -35,13 +35,14 @@ export default function CustomEdge({
         setEdges((edges) => edges.filter((edge) => edge.id !== id));
     };
 
+
     return (
         <>
-            <path id={id} style={style} className="react-flow__edge-path" d={edgePath} markerEnd={markerEnd}>
-            </path>
+            <path id={id} style={{ stroke: data.lineColor, strokeWidth: '1', fill: 'none' }} d={edgePath} markerEnd={markerEnd}>
+            </path >
 
-            <circle r="1" fill="ivory" stroke="orange">
-                <animateMotion calcMode="spline" keyTimes="0;1" keySplines="0.37 0 0.63 1" path={edgePath} begin="0s" dur={data.animationSpeed} fill="freeze" repeatCount="indefinite" />
+            <circle r="1" fill={data.dotColor} stroke={data.dotColor}>
+                <animateMotion calcMode="spline" keyTimes="0;1" keySplines="0.37 0 0.63 1" path={edgePath} begin={String(data.begin) + "s"} dur={data.animationSpeed} fill="freeze" repeatCount="indefinite" />
             </circle>
 
         </>

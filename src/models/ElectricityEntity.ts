@@ -42,6 +42,7 @@ export abstract class ElectricityEntity {
     private hass: Signal<unknown>;
     private configKey: string;
     private energySelection: Signal<unknown>;
+    private nodeId: string;
 
     //To be set by subclasses
     protected isSolar: boolean = false;
@@ -49,6 +50,9 @@ export abstract class ElectricityEntity {
     protected isBattery: boolean = false;
     protected isHome: boolean = false;
     protected isSubHome: boolean = false;
+
+    protected childEntities: ElectricityEntity[];
+    protected parentEntitiy: ElectricityEntity;
 
     //Extracted Configuration
     protected primaryInputEntityId: any;
@@ -81,12 +85,13 @@ export abstract class ElectricityEntity {
     //Signals
     public onUpdated: Signal<number>;
 
-    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, configKey: string) {
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, configKey: string, nodeId: string) {
         this.config = config;
         this.hass = hass;
         this.energySelection = energySelection;
         this.configKey = configKey;
         this.onUpdated = new Signal(0);
+        this.nodeId = nodeId;
 
         this.hass.subscribe(() => { this.updateState(); });
         this.config.subscribe(() => { this.updateConfig(); this.updateState(); });
@@ -116,6 +121,22 @@ export abstract class ElectricityEntity {
         this.primaryStateOutputUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["primaryOutputUnit"] : null);
         this.secondaryStateUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["secondaryUnit"] : null);
 
+    }
+
+    public clearChildEntities() {
+        this.childEntities = [];
+    }
+
+    public addChildEntity(childEntity: ElectricityEntity) {
+        this.childEntities.push(childEntity);
+    }
+
+    public setChildEntities(childEntities: ElectricityEntity[]) {
+        this.childEntities = childEntities;
+    }
+
+    public setParentEntity(parentEntitiy: ElectricityEntity) {
+        this.parentEntitiy = parentEntitiy;
     }
 
     private async updateState(): Promise<void> {
@@ -174,7 +195,6 @@ export abstract class ElectricityEntity {
     }
 
     private extractUnitsFromStates(primaryInput: any, primaryOutput: any, secondary: any) {
-        console.log("ExtractUnitsFromHass", [primaryInput, primaryOutput, secondary]);
         this.primaryStateInputUnit.setUnitFromHass(primaryInput ? primaryInput['attributes'] ? primaryInput['attributes']['unit_of_measurement'] : null : null);
         this.primaryStateOutputUnit.setUnitFromHass(primaryOutput ? primaryOutput['attributes'] ? primaryOutput['attributes']['unit_of_measurement'] : null : null);
         this.secondaryStateUnit.setUnitFromHass(secondary ? secondary['attributes'] ? secondary['attributes']['unit_of_measurement'] : null : null);
@@ -226,6 +246,9 @@ export abstract class ElectricityEntity {
         }) as Statistics;
     }
 
+    public getNodeId(): string {
+        return this.nodeId;
+    }
 
     public getPrimaryInputState(): ElectricityState | GeneralState {
         var result;
@@ -271,20 +294,239 @@ export abstract class ElectricityEntity {
 
     }
 
+    public getElectricityInSystemFromSolarGridAndBattery() {
+        if (!ElectricityEntity.Grid || !ElectricityEntity.Solar || !ElectricityEntity.Battery) {
+            return { fromGrid: 0, fromSolar: 0, fromBattery: 0 };
+        }
+
+        var gridInput = ElectricityEntity.Grid.getPrimaryInputState();
+        var gridOutput = ElectricityEntity.Grid.getPrimaryOutputState();
+        var solarOutput = ElectricityEntity.Solar.getPrimaryOutputState();
+        var batteryOutput = ElectricityEntity.Battery.getPrimaryOutputState();
+        var batteryInput = ElectricityEntity.Battery.getPrimaryInputState();
+
+        var gridInputUnit = new StateUnit();
+        gridInputUnit.setUnitFromConfig(gridInput.unit);
+
+        var gridOutputUnit = new StateUnit();
+        gridOutputUnit.setUnitFromConfig(gridOutput.unit);
+
+        var solarUnit = new StateUnit();
+        solarUnit.setUnitFromConfig(solarOutput.unit);
+
+        var batteryOutputUnit = new StateUnit();
+        batteryOutputUnit.setUnitFromConfig(batteryOutput.unit);
+
+        var batteryInputUnit = new StateUnit();
+        batteryInputUnit.setUnitFromConfig(batteryInput.unit);
+
+        if (!Number.isNaN(gridOutput.value) && !Number.isNaN(solarOutput.value) && !Number.isNaN(batteryOutput.value)
+            && !Number.isNaN(batteryInput.value) && !Number.isNaN(gridInput.value)) {
+
+            var fromGrid = gridOutputUnit.convertToBaseUnit(gridOutput.value);
+            var fromSolar = solarUnit.convertToBaseUnit(solarOutput.value) - gridInputUnit.convertToBaseUnit(gridInput.value) - batteryInputUnit.convertToBaseUnit(batteryInput.value);
+            var fromBattery = batteryOutputUnit.convertToBaseUnit(batteryOutput.value);
+
+            return { fromGrid: fromGrid, fromSolar: fromSolar, fromBattery: fromBattery };
+        }
+
+        return { fromGrid: 0, fromSolar: 0, fromBattery: 0 };
+
+    }
+
+    public static getElectricityFlowRate(From: ElectricityEntity, To: ElectricityEntity) {
+
+        if (!From.isSubHome && !To.isSubHome) {
+            var flowRates = ElectricityEntity.getElectricityFlowRatesForBaseSystem();
+
+            if (From.isGrid) {
+                if (To.isBattery)
+                    return flowRates.gridToBattery;
+                if (To.isHome)
+                    return flowRates.gridToHome;
+                if (To.isSolar)
+                    return -flowRates.solarToGrid;
+            }
+            if (From.isBattery) {
+                if (To.isGrid)
+                    return -flowRates.gridToBattery;
+                if (To.isHome)
+                    return flowRates.batteryToHome;
+                if (To.isSolar)
+                    return -flowRates.solarToBattery;
+
+            }
+            if (From.isSolar) {
+                if (To.isGrid)
+                    return flowRates.solarToGrid;
+                if (To.isBattery)
+                    return flowRates.solarToBattery;
+                if (To.isHome)
+                    return flowRates.solarToHome;
+            }
+            if (From.isHome) {
+                if (To.isGrid)
+                    return -flowRates.gridToHome;
+                if (To.isBattery)
+                    return - flowRates.batteryToHome;
+                if (To.isSolar)
+                    return - flowRates.solarToHome;
+            }
+        }
+
+        if (To.isSubHome) {
+            try {
+                var fromInput = From.getPrimaryInputState();
+                var fromInputUnit = new StateUnit();
+                if (Number.isNaN(fromInput.value))
+                    return 0;
+
+                fromInputUnit.setUnitFromConfig(fromInput.unit);
+                var fromInputBaseValue = fromInputUnit.convertToBaseUnit(fromInput.value);
+
+                var toInput = To.getPrimaryInputState();
+                var toInputUnit = new StateUnit();
+                if (Number.isNaN(toInput.value) || toInput.value == 0)
+                    return 0;
+
+
+                toInputUnit.setUnitFromConfig(toInput.unit);
+
+                var toInputBaseValue = toInputUnit.convertToBaseUnit(toInput.value);
+
+                return toInputBaseValue / fromInputBaseValue;
+
+            }
+            catch {
+                return 0;
+            }
+
+        }
+    }
+
+    public static getElectricityFlowRatesForBaseSystem() {
+        var flowRates = { gridToHome: 0, gridToBattery: 0, solarToGrid: 0, solarToBattery: 0, solarToHome: 0, batteryToHome: 0 };
+
+        if (!ElectricityEntity.Grid || !ElectricityEntity.Solar) {
+            return flowRates;
+        }
+
+        var gridInput = ElectricityEntity.Grid.getPrimaryInputState();
+        var gridOutput = ElectricityEntity.Grid.getPrimaryOutputState();
+        var solarOutput = ElectricityEntity.Solar.getPrimaryOutputState();
+        var batteryOutput = ElectricityEntity.Battery.getPrimaryOutputState();
+        var batteryInput = ElectricityEntity.Battery.getPrimaryInputState();
+
+        var gridInputUnit = new StateUnit();
+        gridInputUnit.setUnitFromConfig(gridInput.unit);
+
+        var gridOutputUnit = new StateUnit();
+        gridOutputUnit.setUnitFromConfig(gridOutput.unit);
+
+        var solarUnit = new StateUnit();
+        solarUnit.setUnitFromConfig(solarOutput.unit);
+
+        var batteryOutputUnit = new StateUnit();
+        batteryOutputUnit.setUnitFromConfig(batteryOutput.unit);
+
+        var batteryInputUnit = new StateUnit();
+        batteryInputUnit.setUnitFromConfig(batteryInput.unit);
+
+
+        //TODO: We're assuming the battery is only charged by solar and multiple other things, sigh...
+        //If we have an electricity meter for home consumption, this can be calculated differently
+        //Especially for users who only have a battery for arbitrage!
+        if (!Number.isNaN(gridOutput.value) && !Number.isNaN(solarOutput.value) && !Number.isNaN(batteryOutput.value)
+            && !Number.isNaN(batteryInput.value) && !Number.isNaN(gridInput.value)) {
+
+            var totalElectricity = gridOutputUnit.convertToBaseUnit(gridOutput.value) + solarUnit.convertToBaseUnit(solarOutput.value);
+
+            var gridToHome = gridOutputUnit.convertToBaseUnit(gridOutput.value);
+            var batteryToHome = batteryOutputUnit.convertToBaseUnit(batteryOutput.value);
+            var solarToHome = solarUnit.convertToBaseUnit(solarOutput.value) - gridInputUnit.convertToBaseUnit(gridInput.value) - batteryInputUnit.convertToBaseUnit(batteryInput.value);
+            var solarToGrid = gridInputUnit.convertToBaseUnit(gridInput.value);
+            var solarToBattery = batteryInputUnit.convertToBaseUnit(batteryInput.value);
+            var gridToBattery = 0;
+
+            gridToHome /= totalElectricity;
+            batteryToHome /= totalElectricity;
+            solarToHome /= totalElectricity;
+            solarToGrid /= totalElectricity;
+            solarToBattery /= totalElectricity;
+            gridToBattery /= totalElectricity;
+
+            flowRates.gridToHome = gridToHome;
+            flowRates.batteryToHome = batteryToHome;
+            flowRates.solarToHome = solarToHome;
+            flowRates.solarToGrid = solarToGrid;
+            flowRates.solarToBattery = solarToBattery;
+            flowRates.gridToBattery = gridToBattery;
+        }
+
+        return flowRates;
+
+    }
+
+    public getParentEntity(): ElectricityEntity {
+        return this.parentEntitiy;
+    }
+
+    public getChildEntities(): ElectricityEntity[] {
+        return this.childEntities;
+    }
+
+    public getConfigKey(): string {
+        return this.configKey;
+    }
+
     public getSolarColor(): any {
+        if (ElectricityEntity.Solar?.colorOverride) {
+            return ElectricityEntity.Solar.colorOverride;
+        }
+
         return this.solarColor;
     }
 
     public getGridColor(): any {
+        if (ElectricityEntity.Grid?.colorOverride) {
+            return ElectricityEntity.Grid.colorOverride;
+        }
+
         return this.gridColor;
     }
 
     public getBatteryColor(): any {
+        if (ElectricityEntity.Battery?.colorOverride) {
+            return ElectricityEntity.Battery.colorOverride;
+        }
+
         return this.batteryColor;
+    }
+
+    public hasPrimaryInputDefined(): boolean {
+        return this.primaryInputEntityId != null;
+    }
+
+    public hasPrimaryOutputDefined(): boolean {
+        return this.primaryOutputEntityId != null;
     }
 
     public getColorOverride(): any {
         return this.colorOverride;
+    }
+
+    public static getInboundColor(From: ElectricityEntity) {
+        if (From.isBattery) {
+            return From.getBatteryColor();
+        }
+        if (From.isGrid) {
+            return From.getGridColor();
+        }
+        if (From.isSolar) {
+            return From.getSolarColor();
+        }
+
+        return From.getColorOverride() ? From.getColorOverride() : "pink";
     }
 
     public getIcon(): any {
@@ -298,8 +540,8 @@ export abstract class ElectricityEntity {
 
 export class SolarEntity extends ElectricityEntity {
 
-    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
-        super(config, hass, energySelection, "solar");
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, nodeId: string) {
+        super(config, hass, energySelection, "solar", nodeId);
         this.isSolar = true;
         ElectricityEntity.Solar = this;
     }
@@ -307,8 +549,8 @@ export class SolarEntity extends ElectricityEntity {
 
 export class GridEntity extends ElectricityEntity {
 
-    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
-        super(config, hass, energySelection, "grid");
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, nodeId: string) {
+        super(config, hass, energySelection, "grid", nodeId);
         this.isGrid = true;
         ElectricityEntity.Grid = this;
     }
@@ -316,8 +558,8 @@ export class GridEntity extends ElectricityEntity {
 
 export class BatteryEntity extends ElectricityEntity {
 
-    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
-        super(config, hass, energySelection, "battery");
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, nodeId: string) {
+        super(config, hass, energySelection, "battery", nodeId);
         this.isBattery = true;
         ElectricityEntity.Battery = this;
     }
@@ -325,10 +567,14 @@ export class BatteryEntity extends ElectricityEntity {
 
 export class HomeEntity extends ElectricityEntity {
 
-    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>) {
-        super(config, hass, energySelection, "home");
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, nodeId: string) {
+        super(config, hass, energySelection, "home", nodeId);
         this.isHome = true;
         ElectricityEntity.Home = this;
+    }
+
+    public setChildEntities(childEntities: ElectricityEntity[]) {
+        this.childEntities = childEntities;
     }
 
     public getPrimaryInputState(): ElectricityState | GeneralState {
@@ -350,16 +596,22 @@ export class HomeEntity extends ElectricityEntity {
 
         var gridInputUnit = new StateUnit();
         gridInputUnit.setUnitFromConfig(gridInput.unit);
+
         var gridOutputUnit = new StateUnit();
         gridOutputUnit.setUnitFromConfig(gridOutput.unit);
+
         var solarUnit = new StateUnit();
         solarUnit.setUnitFromConfig(solarOutput.unit);
+
         var batteryOutputUnit = new StateUnit();
         batteryOutputUnit.setUnitFromConfig(batteryOutput.unit);
+
         var batteryInputUnit = new StateUnit();
         batteryInputUnit.setUnitFromConfig(batteryInput.unit);
 
-        if (!Number.isNaN(gridOutput.value) && !Number.isNaN(solarOutput.value) && !Number.isNaN(batteryOutput.value)) {
+        if (!Number.isNaN(gridOutput.value) && !Number.isNaN(solarOutput.value) && !Number.isNaN(batteryOutput.value)
+            && !Number.isNaN(batteryInput.value) && !Number.isNaN(gridInput.value)) {
+
             sum += gridOutputUnit.convertToBaseUnit(gridOutput.value);
             sum += solarUnit.convertToBaseUnit(solarOutput.value);
             sum += batteryOutputUnit.convertToBaseUnit(batteryOutput.value);
@@ -387,9 +639,85 @@ export class HomeEntity extends ElectricityEntity {
 
 export class SubHomeEntity extends ElectricityEntity {
 
-    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, configKey: string) {
-        super(config, hass, energySelection, configKey);
+    constructor(config: Signal<unknown>, hass: Signal<unknown>, energySelection: Signal<unknown>, configKey: string, nodeId: string) {
+        super(config, hass, energySelection, configKey, nodeId);
         this.isSubHome = true;
+    }
+
+    public setChildEntities(childEntities: SubHomeEntity[]) {
+        this.childEntities = childEntities;
+    }
+
+    public setParentEntity(parentEntitiy: HomeEntity) {
+        this.parentEntitiy = parentEntitiy;
+    }
+
+
+    public getPrimaryInputState(): ElectricityState | GeneralState {
+        if (this.primaryInputEntityId != null) {
+            return super.getPrimaryInputState();
+        }
+        try {
+            //if we dont have a primary input defined, we can calulate it if all other siblings have one defined
+
+            //first we're making sure we don't self refrence here when calculating our own use
+            var everySiblingHasPrimary = true;
+
+            this.parentEntitiy.getChildEntities().forEach(child => {
+                if (child != this && !child.hasPrimaryInputDefined())
+                    everySiblingHasPrimary = false;
+            });
+
+            if (!everySiblingHasPrimary) {
+                return { value: NaN, unit: "", available: false };
+            }
+
+            var sumOfSiblings = 0;
+            var isAvailable = true;
+            var isPower = false;
+
+            this.parentEntitiy.getChildEntities().forEach(child => {
+                if (child != this) {
+                    var input = child.getPrimaryInputState();
+
+                    if (Number.isNaN(input.value)) {
+                        isAvailable = false;
+                        return;
+                    }
+
+                    var unit = new StateUnit();
+                    unit.setUnitFromConfig(input.unit);
+                    sumOfSiblings += unit.convertToBaseUnit(input.value);
+                    isPower = unit.isPower();
+                }
+            });
+
+            if (!isAvailable) {
+                return { value: NaN, unit: "", available: false };
+            }
+
+            var parentInput = this.parentEntitiy.getPrimaryInputState();
+            var parentUnit = new StateUnit();
+            parentUnit.setUnitFromConfig(parentInput.unit);
+            var ownSum = parentUnit.convertToBaseUnit(parentInput.value) - sumOfSiblings;
+
+            try {
+                var unit = new StateUnit();
+
+                if (isPower)
+                    unit.setUnitFromConfig(ElectricityUnit.W);
+                else
+                    unit.setUnitFromConfig(ElectricityUnit.Wh);
+
+                return unit.thresholdIfElectricity(ownSum, true, this.kiloThreshold, this.megaThreshold, this.gigaThreshold);
+            }
+            catch {
+                return { value: NaN, unit: "", available: false };
+            }
+        }
+        catch {
+            return { value: NaN, unit: "", available: false };
+        }
     }
 }
 
