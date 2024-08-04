@@ -67,7 +67,7 @@ function App({ cardName, hass, config, cardSize, energySelection, entities, node
   return (
     <ha-card style={{ padding: "1rem" }}>
       <div style={{ width: '400px', height: '400px' }}>
-        <ReactFlow zoomOnDoubleClick={false} zoomOnPinch={false} panOnDrag={false} zoomOnScroll={false} nodes={ReactFlowNodes} edges={ReactFlowEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} connectionMode='loose' />
+        <ReactFlow zoomOnDoubleClick={false} nodesDraggable={false} nodesFocusable={false} edgesFocusable={false} elementsSelectable={false} zoomOnPinch={false} autoPanOnNodeDrag={false} panOnDrag={false} panOnScroll={false} zoomOnScroll={false} nodes={ReactFlowNodes} edges={ReactFlowEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} connectionMode='loose' />
       </div>
     </ha-card>
   );
