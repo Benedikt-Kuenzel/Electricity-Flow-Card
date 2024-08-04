@@ -1,8 +1,24 @@
-# React + Vite
+# Electricity-Flow-Card
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+##Introduction
 
-Currently, two official plugins are available:
+This project expands on HomeAssistant's energy card. It adds support for both power and energy data (it simply uses the units provided by you or the selected entities),
+custom nodes and integrates with custom date pickers. 
+You can add a completely customizable subtree of nodes to your home consumption node. If you are missing a power/energy meter for one of these sub nodes, the card will even calculate
+the missing value for you. All nodes are fully customizable, you can change their icons, colours, secondary entities (for example a battery charge indicator) and more.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+![Preview Gif of the Electricity-Flow-Card](/images/preview.gif)
+
+
+##How to install in HomeAssistant
+
+TODO
+
+##How to use and description of parameters
+
+TODO
+
+##How to contribute
+
+TODO
+
