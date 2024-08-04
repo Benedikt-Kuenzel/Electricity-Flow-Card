@@ -17,6 +17,7 @@ export type ReactCardProps = {
     subEntities: ElectricityEntity[];
     subEdges: ElectricityEdge[];
     subNodes: any[];
+    height: any;
 };
 
 export interface EnergyCollection {
@@ -44,6 +45,8 @@ const createReactCard = (
     return class Card extends HTMLElement {
         root: ReactDOM.Root;
         private mountPoint!: HTMLDivElement;
+        private subscribedToEnergyDate: boolean = false;
+        private updatePending: boolean = false;
 
         constructor() {
             super();
@@ -56,10 +59,22 @@ const createReactCard = (
             this.shadowRoot.appendChild(style);
             this.root = ReactDOM.createRoot(this.shadowRoot);
 
+
             HassService.createService(signals.hass, signals.energySelection);
             this.createEntitiesAndEdges();
             this.createSubEntitiesAndEdges();
             this.render();
+            this.updatePoll();
+        }
+
+        private updatePoll() {
+            if (this.updatePending) {
+                this.updatePending = false;
+                this.createNodes();
+                this.createSubNodes();
+                this.render();
+            }
+            setTimeout(this.updatePoll, 100);
         }
 
         createEntitiesAndEdges() {
@@ -70,7 +85,7 @@ const createReactCard = (
             signals.entities = [Grid, Solar, Battery, Home];
 
             signals.entities.forEach(entity => {
-                entity.onUpdated.subscribe(() => this.render());
+                entity.onUpdated.subscribe(() => { this.updatePending = true; this.render(); });
             })
 
             var SolarToGrid = new ElectricityEdge(Solar, Grid, 'IO_Bottom_Left', 'IO_Right_Top', 0);
@@ -84,10 +99,10 @@ const createReactCard = (
         }
 
         createNodes() {
-            var GridNode = { id: 'grid', type: 'energyElementNode', position: { x: signals.config.value['grid']?.["x"] ?? 0, y: signals.config.value['grid']?.["y"] ?? 100 }, data: { label: 'Grid', entity: signals.entities[0], primaryInput: signals.entities[0].getPrimaryInputState(), primaryOutput: signals.entities[0].getPrimaryOutputState(), secondary: signals.entities[0].getSecondaryState() } };
-            var SolarNode = { id: 'solar', type: 'energyElementNode', position: { x: signals.config.value['solar']?.["x"] ?? 100, y: signals.config.value['solar']?.["y"] ?? 0 }, data: { label: 'Solar', entity: signals.entities[1], primaryInput: signals.entities[1].getPrimaryInputState(), primaryOutput: signals.entities[1].getPrimaryOutputState(), secondary: signals.entities[1].getSecondaryState() } };
-            var BatteryNode = { id: 'battery', type: 'energyElementNode', position: { x: signals.config.value['battery']?.["x"] ?? 200, y: signals.config.value['battery']?.["y"] ?? 100 }, data: { label: 'Battery', entity: signals.entities[2], primaryInput: signals.entities[2].getPrimaryInputState(), primaryOutput: signals.entities[2].getPrimaryOutputState(), secondary: signals.entities[2].getSecondaryState() } };
-            var HomeNode = { id: 'home', type: 'energyElementNode', position: { x: signals.config.value['home']?.["x"] ?? 100, y: signals.config.value['home']?.["y"] ?? 200 }, data: { label: 'Home', entity: signals.entities[3], primaryInput: signals.entities[3].getPrimaryInputState(), primaryOutput: signals.entities[3].getPrimaryOutputState(), secondary: signals.entities[3].getSecondaryState() } };
+            var GridNode = { id: 'grid', type: 'energyElementNode', position: { x: signals.config.value['grid']?.["x"] ?? 0, y: signals.config.value['grid']?.["y"] ?? 100 }, data: { x: signals.config.value['grid']?.["x"] ?? 0, label: 'Grid', entity: signals.entities[0], primaryInput: signals.entities[0].getPrimaryInputState(), primaryOutput: signals.entities[0].getPrimaryOutputState(), secondary: signals.entities[0].getSecondaryState() } };
+            var SolarNode = { id: 'solar', type: 'energyElementNode', position: { x: signals.config.value['solar']?.["x"] ?? 100, y: signals.config.value['solar']?.["y"] ?? 0 }, data: { x: signals.config.value['solar']?.["x"] ?? 100, label: 'Solar', entity: signals.entities[1], primaryInput: signals.entities[1].getPrimaryInputState(), primaryOutput: signals.entities[1].getPrimaryOutputState(), secondary: signals.entities[1].getSecondaryState() } };
+            var BatteryNode = { id: 'battery', type: 'energyElementNode', position: { x: signals.config.value['battery']?.["x"] ?? 200, y: signals.config.value['battery']?.["y"] ?? 100 }, data: { x: signals.config.value['battery']?.["x"] ?? 200, label: 'Battery', entity: signals.entities[2], primaryInput: signals.entities[2].getPrimaryInputState(), primaryOutput: signals.entities[2].getPrimaryOutputState(), secondary: signals.entities[2].getSecondaryState() } };
+            var HomeNode = { id: 'home', type: 'energyElementNode', position: { x: signals.config.value['home']?.["x"] ?? 100, y: signals.config.value['home']?.["y"] ?? 200 }, data: { x: signals.config.value['home']?.["x"] ?? 100, label: 'Home', entity: signals.entities[3], primaryInput: signals.entities[3].getPrimaryInputState(), primaryOutput: signals.entities[3].getPrimaryOutputState(), secondary: signals.entities[3].getSecondaryState() } };
             signals.nodes = [GridNode, SolarNode, BatteryNode, HomeNode];
         }
 
@@ -124,28 +139,44 @@ const createReactCard = (
                 signals.subEdges.push(new ElectricityEdge(parent, subHome, 'IO_Bottom_Center', 'IO_Top_Center', 0));
                 signals.subEntities.push(subHome);
             });
+
+            signals.subEntities.forEach(entity => {
+                entity.onUpdated.subscribe(() => { this.updatePending = true; this.render(); });
+            })
         }
 
         createSubNodes() {
             signals.subNodes = []
             signals.subEntities.forEach(subEntity => {
-                signals.subNodes.push({ id: subEntity.getNodeId(), type: 'energyElementNode', position: { x: signals.config.value[subEntity.getConfigKey()]["x"], y: signals.config.value[subEntity.getConfigKey()]["y"] }, data: { label: signals.config.value[subEntity.getConfigKey()]['label'], entity: subEntity, primaryInput: subEntity.getPrimaryInputState(), primaryOutput: subEntity.getPrimaryOutputState(), secondary: subEntity.getSecondaryState() } })
+                signals.subNodes.push({ id: subEntity.getNodeId(), type: 'energyElementNode', position: { x: signals.config.value[subEntity.getConfigKey()]["x"], y: signals.config.value[subEntity.getConfigKey()]["y"] }, data: { x: signals.config.value[subEntity.getConfigKey()]["x"], label: signals.config.value[subEntity.getConfigKey()]['label'], entity: subEntity, primaryInput: subEntity.getPrimaryInputState(), primaryOutput: subEntity.getPrimaryOutputState(), secondary: subEntity.getSecondaryState() } })
             })
         }
 
+        pollEnergyDataCollectionAndSubscribe() {
+            var res = getEnergyDataCollection(signals.hass.value);
+            if (!res) {
+                setTimeout(this.pollEnergyDataCollectionAndSubscribe, 100);
+            }
+            else if (!this.subscribedToEnergyDate) {
+                signals.energySelection.value = res;
+                this.subscribedToEnergyDate = true;
+                (res as any).subscribe((v: EnergyCollection) => {
+                    signals.energySelection.value = v;
+                })
+            }
+        }
 
         // Whenever the state changes, a new `hass` object is set. Use this to
         // update your content.
         set hass(hass: unknown) {
-            signals.energySelection.value = getEnergyDataCollection(hass);
             signals.hass.value = hass;
-            console.log("Hass changed", hass);
+            this.pollEnergyDataCollectionAndSubscribe();
         }
-
 
         render() {
             this.createNodes();
             this.createSubNodes();
+            signals.height = this.getHeight();
             this.root.render(
                 <React.StrictMode>
                     <ReactComponent
@@ -159,6 +190,7 @@ const createReactCard = (
                         subEntities={signals.subEntities}
                         subEdges={signals.subEdges}
                         subNodes={signals.subNodes}
+                        height={signals.height}
                     />
                 </React.StrictMode>
             );
@@ -185,12 +217,30 @@ const createReactCard = (
             this.render();
         }
 
+        getHeight() {
+            var maxY = signals.nodes && signals.nodes[0] ? signals.nodes[0].position.y : 0;
+
+            signals.nodes.forEach(node => {
+                if (node.position.y > maxY) {
+                    maxY = node.position.y;
+                }
+            });
+
+            signals.subNodes.forEach(node => {
+                if (node.position.y > maxY) {
+                    maxY = node.position.y;
+                }
+            });
+
+            return maxY + 100;
+        }
+
         // The height of your card. Home Assistant uses this to automatically
         // distribute all cards over the available columns.
         getCardSize() {
             signals.cardSize.value = Math.max(
                 1,
-                Math.ceil(this.shadowRoot.host.getBoundingClientRect().height / 50)
+                Math.ceil((signals.height ?? 400) / 50)
             );
             return signals.cardSize.value;
         }

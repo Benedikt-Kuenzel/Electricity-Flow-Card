@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import ReactFlow from 'reactflow';
+import React, { useEffect, useRef, useState } from "react";
+import { ReactFlow, useNodesState } from 'reactflow';
 import { ReactCardProps } from "./utilities/createReactCard";
 import 'reactflow/dist/style.css';
 import EnergyElementNode from './views/EnergyElementNode';
@@ -40,9 +40,37 @@ const initialEdges = [
   { id: 'battery-home', data: { animationSpeed: "1s" }, type: 'flowEdge', source: 'battery', target: 'home', sourceHandle: 'IO_Left_Bottom', targetHandle: 'IO_Top_Right' }
 ];
 
-function App({ cardName, hass, config, cardSize, energySelection, entities, nodes, edges, subNodes, subEdges }: ReactCardProps) {
+function App({ cardName, hass, config, cardSize, energySelection, entities, nodes, edges, subNodes, subEdges, height }: ReactCardProps) {
   const renderRef = useRef(0);
   renderRef.current++;
+
+  const tag = useRef();
+
+
+
+  var maxX = nodes && nodes[0] ? nodes[0].data.x : 0;
+
+  nodes.forEach(node => {
+    if (node.data.x > maxX) {
+      maxX = node.data.x;
+    }
+  });
+
+  subNodes.forEach(node => {
+    if (node.data.x > maxX) {
+      maxX = node.data.x;
+    }
+  });
+
+  var nodeWidth = maxX + 100;
+
+  nodes.forEach(node => {
+    node.position.x = (node.data.x / nodeWidth) * (tag?.current?.clientWidth ?? 400);
+  });
+  subNodes.forEach(node => {
+    node.position.x = (node.data.x / nodeWidth) * (tag?.current?.clientWidth ?? 400);
+  });
+
 
   var ReactFlowEdges = [];
 
@@ -54,7 +82,7 @@ function App({ cardName, hass, config, cardSize, energySelection, entities, node
     ReactFlowEdges.push(subEdge.getEdgeDescription());
   })
 
-  var ReactFlowNodes = [];
+  const ReactFlowNodes = [];
 
   nodes.forEach(node => {
     ReactFlowNodes.push(node);
@@ -64,10 +92,42 @@ function App({ cardName, hass, config, cardSize, energySelection, entities, node
     ReactFlowNodes.push(subNodes);
   })
 
+  //hiding attribution as this is project itself is public domain
+  //TODO: If you are using this project in a commercial setting, please follow
+  //the reactflow license guidelines!
+  const proOptions = { hideAttribution: true };
+
+  const [usedNodes, setNodes, onNodesChange] = useNodesState(ReactFlowNodes);
+
+  const onResize = React.useCallback(() => {
+    if (tag.current) {
+      setNodes((nds) =>
+        nds.map((node) => {
+          return {
+            ...node,
+            position: {
+              ...node.position,
+              x: (node.data.x / nodeWidth) * (tag?.current?.clientWidth ?? 400)
+            }
+          };
+        }),
+      );
+
+    }
+  }, [tag?.current?.clientWidth]);
+
+
+  React.useEffect(() => {
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
   return (
     <ha-card style={{ padding: "1rem" }}>
-      <div style={{ width: '400px', height: '400px' }}>
-        <ReactFlow zoomOnDoubleClick={false} nodesDraggable={false} nodesFocusable={false} edgesFocusable={false} elementsSelectable={false} zoomOnPinch={false} autoPanOnNodeDrag={false} panOnDrag={false} panOnScroll={false} zoomOnScroll={false} nodes={ReactFlowNodes} edges={ReactFlowEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} connectionMode='loose' />
+      <div ref={tag} style={{ height: height }}>
+        <ReactFlow proOptions={proOptions} zoomOnDoubleClick={false} nodesDraggable={false} nodesFocusable={false} edgesFocusable={false} elementsSelectable={false} zoomOnPinch={false} autoPanOnNodeDrag={false} panOnDrag={false} panOnScroll={false} zoomOnScroll={false} nodes={usedNodes} edges={ReactFlowEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} connectionMode='loose' />
       </div>
     </ha-card>
   );

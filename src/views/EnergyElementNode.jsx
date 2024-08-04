@@ -4,7 +4,7 @@ import electricityCircle from './electricityCircle';
 
 
 
-export default memo(({ data, isConnectable }) => {
+export default function EnergyElementNode({ data, isConnectable }) {
     var test = data.label;
 
     var secondary = null;
@@ -206,4 +206,4 @@ export default memo(({ data, isConnectable }) => {
             </svg>
         </>
     );
-});
+};

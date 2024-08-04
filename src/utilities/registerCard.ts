@@ -20,12 +20,18 @@ export default function registerCard(
             edges: [],
             subEntities: [],
             subEdges: [],
-            subNodes: []
+            subNodes: [],
+            height: 400
         } as const satisfies ReactCardProps;
         cardStates.value = { ...cardStates.value, [cardName]: signals } as const;
     }
 
     const ReactNode = createReactCard(component, cardStates.value[cardName]);
     customElements.define(cardName, ReactNode);
-    console.info("Registered:", cardName);
+    const version = "1.0.0";
+    console.info(
+        `%c ⚡ Electricity Flow Card ⚡ %c ${version} `,
+        'color: white; background: blue; font-weight: 700;',
+        'color: green; background: white; font-weight: 700;',
+    );
 }

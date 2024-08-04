@@ -26,6 +26,7 @@ export class HassService {
         this.energySelection = energySelection;
 
         this.hassSignal.subscribe(() => { this.collectValuesAndNotify(); });
+        this.energySelection.subscribe(() => { this.collectValuesAndNotify(); });
     }
 
     public static createService(hassSignal: Signal<unknown>, energySelection: Signal<unknown>): HassService {

@@ -186,10 +186,10 @@ export abstract class ElectricityEntity {
             this.secondaryAvailable = accumulatedStats ? true : false;
         }
 
-        this.onUpdated.value = this.onUpdated.value++;
+        this.onUpdated.value = this.onUpdated.value + 1;
     }
 
-    private updateState(): Promise<void> {
+    private updateState() {
         if (this.hass.value == null || this.hass.value["states"] == null) {
             this.primaryInputAvailable = false;
             this.primaryOutputAvailable = false;
@@ -222,7 +222,7 @@ export abstract class ElectricityEntity {
             this.secondaryState = Number(stateObjSecondary.state);
         }
 
-        this.onUpdated.value = this.onUpdated.value++;
+        this.onUpdated.value = this.onUpdated.value + 1;
     }
 
     private extractUnitsFromStates(primaryInput: any, primaryOutput: any, secondary: any) {
@@ -233,7 +233,7 @@ export abstract class ElectricityEntity {
 
     public getTextColor(): any {
         if (this.usesDarkmode) {
-            return (this.hass.value && this.hass.value["themes"]["darkmode"]) ? (this.hass.value["themes"]["darkmode"] == "true" ? this.darkTextColor : this.lightTextColor) : this.lightTextColor;
+            return (this.hass.value && this.hass.value["themes"] && this.hass.value["themes"]["darkMode"] == true) ? this.darkTextColor : this.lightTextColor;
         }
 
         return this.lightTextColor;
@@ -241,7 +241,7 @@ export abstract class ElectricityEntity {
 
     public getIconColor(): any {
         if (this.usesDarkmode) {
-            return (this.hass.value && this.hass.value["themes"]["darkmode"]) ? (this.hass.value["themes"]["darkmode"] == "true" ? this.darkIconColor : this.lightIconColor) : this.lightIconColor;
+            return (this.hass.value && this.hass.value["themes"] && this.hass.value["themes"]["darkMode"] == true) ? this.darkIconColor : this.lightIconColor;
         }
 
         return this.lightIconColor;
