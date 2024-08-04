@@ -1,6 +1,6 @@
 # Electricity-Flow-Card
 
-##Introduction
+## Introduction
 
 This project expands on HomeAssistant's energy card. It adds support for both power and energy data (it simply uses the units provided by you or the selected entities),
 custom nodes and integrates with custom date pickers. 
@@ -10,15 +10,15 @@ the missing value for you. All nodes are fully customizable, you can change thei
 ![Preview Gif of the Electricity-Flow-Card](/images/preview.gif)
 
 
-##How to install in HomeAssistant
+## How to install in HomeAssistant
 
 TODO
 
-##How to use and description of parameters
+## How to use and description of parameters
 
 TODO
 
-##How to contribute
+## How to contribute
 
 TODO
 
