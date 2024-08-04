@@ -1,6 +1,5 @@
 import { ElectricityEntity } from "./ElectricityEntity";
 
-const MAX_SECONDS_FLOW = 6;
 
 export class ElectricityEdge {
 
@@ -26,7 +25,7 @@ export class ElectricityEdge {
         return {
             id: this.From.getNodeId() + '-' + this.To.getNodeId(),
             data: {
-                animationSpeed: String(Math.round(flowRate * MAX_SECONDS_FLOW)) + "s",
+                animationSpeed: String(Math.round((1 / flowRate) * 10) / 10) + "s",
                 dotColor: color,
                 lineColor: color,
                 begin: this.flowBeginSeconds,
