@@ -12,6 +12,9 @@ export default memo(({ data, isConnectable }) => {
     var primaryOutput = null;
     var icon = null;
 
+    var textColor = "white";
+    var iconColor = "white";
+
     var colorOverride = null;
     var solarColor = null;
     var gridColor = null;
@@ -34,6 +37,8 @@ export default memo(({ data, isConnectable }) => {
         solarColor = data.entity.getSolarColor();
         gridColor = data.entity.getGridColor();
         batteryColor = data.entity.getBatteryColor();
+        textColor = data.entity.getTextColor();
+        iconColor = data.entity.getIconColor();
 
         icon = data.entity.getIcon();
 
@@ -78,7 +83,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Left_Top"
                 position={Position.Left}
-                style={{ top: 28, left: 3, border: 0 }}
+                style={{ top: 28, left: 3, border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -87,7 +92,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Left_Center"
                 position={Position.Left}
-                style={{ left: 1, border: 0 }}
+                style={{ left: 1, border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -96,7 +101,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Left_Bottom"
                 position={Position.Left}
-                style={{ bottom: 21, left: 3, top: 'auto', border: 0 }}
+                style={{ bottom: 21, left: 3, top: 'auto', border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -106,7 +111,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Bottom_Left"
                 position={Position.Bottom}
-                style={{ left: 28, bottom: 3, border: 0 }}
+                style={{ left: 28, bottom: 3, border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -115,7 +120,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Bottom_Center"
                 position={Position.Bottom}
-                style={{ bottom: 1, border: 0 }}
+                style={{ bottom: 1, border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -124,7 +129,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Bottom_Right"
                 position={Position.Bottom}
-                style={{ right: 21, bottom: 3, left: 'auto', border: 0 }}
+                style={{ right: 21, bottom: 3, left: 'auto', border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -134,7 +139,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Top_Left"
                 position={Position.Top}
-                style={{ left: 28, top: 3, border: 0 }}
+                style={{ left: 28, top: 3, border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -143,7 +148,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Top_Center"
                 position={Position.Top}
-                style={{ top: 1, border: 5 }}
+                style={{ top: 1, border: 5, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -152,7 +157,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Top_Right"
                 position={Position.Top}
-                style={{ right: 21, top: 3, left: 'auto', border: 0 }}
+                style={{ right: 21, top: 3, left: 'auto', border: 0, visibility: 'hidden' }}
                 onConnect={(params) => console.log('handle onConnect', params)}
                 isConnectable={true}
                 isConnectableStart={true}
@@ -162,7 +167,7 @@ export default memo(({ data, isConnectable }) => {
 
                 id="IO_Right_Top"
                 position={Position.Right}
-                style={{ top: 28, right: 3, border: 0 }}
+                style={{ top: 28, right: 3, border: 0, visibility: 'hidden' }}
                 isConnectable={true}
                 isConnectableStart={true}
                 isConnectableEnd={true}
@@ -170,7 +175,7 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Right_Center"
                 position={Position.Right}
-                style={{ right: 1, border: 0 }}
+                style={{ right: 1, border: 0, visibility: 'hidden' }}
                 isConnectable={true}
                 isConnectableStart={true}
                 isConnectableEnd={true}
@@ -178,20 +183,20 @@ export default memo(({ data, isConnectable }) => {
             <Handle
                 id="IO_Right_Bottom"
                 position={Position.Right}
-                style={{ bottom: 21, right: 2, top: 'auto', border: 0 }}
+                style={{ bottom: 21, right: 2, top: 'auto', border: 0, visibility: 'hidden' }}
                 isConnectable={true}
                 isConnectableStart={true}
                 isConnectableEnd={true}
             />
 
             {secondary != null &&
-                <div style={{ lineHeight: '12px', fontSize: '11px' }}>
+                <div style={{ lineHeight: '12px', fontSize: '11px', color: textColor }}>
                     {secondary.available ? String(secondary.value) + String(secondary.unit) : "-"}
                 </div>}
-            <div>
+            <div style={{ color: iconColor }}>
                 <ha-icon icon={icon}></ha-icon>
             </div>
-            <div style={{ lineHeight: '12px', fontSize: '11px' }}>
+            <div style={{ lineHeight: '12px', fontSize: '11px', color: textColor }}>
                 {primaryTotalString != null && primaryTotalString}
                 {primaryTotalString == null && <>{primaryTopString}  <br /> {primaryBottomString}</>}
             </div>

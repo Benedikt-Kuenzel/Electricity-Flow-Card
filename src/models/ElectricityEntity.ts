@@ -69,6 +69,11 @@ export abstract class ElectricityEntity {
     private gridColor: any;
     private batteryColor: any;
     private colorOverride: any;
+    private usesDarkmode: any;
+    private lightTextColor: any;
+    private lightIconColor: any;
+    private darkTextColor: any;
+    private darkIconColor: any;
 
 
 
@@ -108,7 +113,14 @@ export abstract class ElectricityEntity {
         this.secondaryEntityId = this.configKey ? this.config.value[this.configKey]["secondaryEntity"] : null;
         this.secondaryUsesDatePicker = this.configKey ? this.config.value[this.configKey]["secondaryUsesDatePicker"] : false;
 
+
         this.primaryUsesDatePicker = this.config.value["primaryUsesDatePicker"];
+        this.usesDarkmode = this.config.value["primaryUsesDatePicker"] ?? false;
+        this.usesDarkmode = this.config.value["usesDarkmode"] ?? true;
+        this.darkIconColor = this.config.value["darkIconColor"] ?? "white";
+        this.darkTextColor = this.config.value["darkTextColor"] ?? "white";
+        this.lightIconColor = this.config.value["lightIconColor"] ?? "black";
+        this.lightTextColor = this.config.value["lightTextColor"] ?? "black";
         this.kiloThreshold = this.config.value["kiloThreshold"] ?? 1000;
         this.megaThreshold = this.config.value["megaThreshold"] ?? 1000000;
         this.gigaThreshold = this.config.value["gigaThreshold"] ?? 1000000000;
@@ -219,7 +231,21 @@ export abstract class ElectricityEntity {
         this.secondaryStateUnit.setUnitFromHass(secondary ? secondary['attributes'] ? secondary['attributes']['unit_of_measurement'] : null : null);
     }
 
+    public getTextColor(): any {
+        if (this.usesDarkmode) {
+            return (this.hass.value && this.hass.value["themes"]["darkmode"]) ? (this.hass.value["themes"]["darkmode"] == "true" ? this.darkTextColor : this.lightTextColor) : this.lightTextColor;
+        }
 
+        return this.lightTextColor;
+    }
+
+    public getIconColor(): any {
+        if (this.usesDarkmode) {
+            return (this.hass.value && this.hass.value["themes"]["darkmode"]) ? (this.hass.value["themes"]["darkmode"] == "true" ? this.darkIconColor : this.lightIconColor) : this.lightIconColor;
+        }
+
+        return this.lightIconColor;
+    }
 
     public getNodeId(): string {
         return this.nodeId;

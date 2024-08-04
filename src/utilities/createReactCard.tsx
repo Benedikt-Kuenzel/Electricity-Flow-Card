@@ -139,6 +139,7 @@ const createReactCard = (
         set hass(hass: unknown) {
             signals.energySelection.value = getEnergyDataCollection(hass);
             signals.hass.value = hass;
+            console.log("Hass changed", hass);
         }
 
 

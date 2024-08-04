@@ -38,7 +38,7 @@ export default function CustomEdge({
 
     return (
         <>
-            <path id={id} style={{ stroke: data.lineColor, strokeWidth: '1', fill: 'none' }} d={edgePath} markerEnd={markerEnd}>
+            <path id={id} style={{ stroke: data.lineColor, strokeWidth: '1', fill: 'none' }} d={edgePath}>
             </path >
 
             {data.animationSpeed != "0s" &&
