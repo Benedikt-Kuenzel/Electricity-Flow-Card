@@ -19,13 +19,16 @@ export class ElectricityEdge {
 
     public getEdgeDescription() {
         var nodeType = this.To.getNodeTypeDescription();
-        var flowRate = ElectricityEntity.getElectricityFlowRate(this.From, this.To);
+        var flowRate: number = ElectricityEntity.getElectricityFlowRate(this.From, this.To);
         var color = nodeType.isSubHome ? ElectricityEntity.getInboundColor(this.To) : ElectricityEntity.getInboundColor(this.From);
+        var animSpeed = "0s";
+        if (Number.isFinite(flowRate) && !Number.isNaN(flowRate) && flowRate != 0)
+            animSpeed = String(Math.round((1 / flowRate) * 10) / 10) + "s";
 
         return {
             id: this.From.getNodeId() + '-' + this.To.getNodeId(),
             data: {
-                animationSpeed: String(Math.round((1 / flowRate) * 10) / 10) + "s",
+                animationSpeed: animSpeed,
                 dotColor: color,
                 lineColor: color,
                 begin: this.flowBeginSeconds,

@@ -41,9 +41,10 @@ export default function CustomEdge({
             <path id={id} style={{ stroke: data.lineColor, strokeWidth: '1', fill: 'none' }} d={edgePath} markerEnd={markerEnd}>
             </path >
 
-            <circle r="1" fill={data.dotColor} stroke={data.dotColor}>
-                <animateMotion calcMode="spline" keyTimes="0;1" keySplines="0.37 0 0.63 1" path={edgePath} begin={String(data.begin) + "s"} dur={data.animationSpeed} fill="freeze" repeatCount="indefinite" />
-            </circle>
+            {data.animationSpeed != "0s" &&
+                <circle r="1" fill={data.dotColor} stroke={data.dotColor}>
+                    <animateMotion calcMode="spline" keyTimes="0;1" keySplines="0.37 0 0.63 1" path={edgePath} begin={String(data.begin) + "s"} dur={data.animationSpeed} fill="freeze" repeatCount="indefinite" />
+                </circle>}
 
         </>
     );

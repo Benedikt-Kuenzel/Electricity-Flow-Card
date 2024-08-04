@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { Signal } from "@preact/signals-react";
 import { ElectricityEntity, SolarEntity, GridEntity, BatteryEntity, HomeEntity, SubHomeEntity } from "../models/ElectricityEntity";
 import { ElectricityEdge } from "../models/ElectricityEdge";
+import { HassService } from "../utilities/hassService"
 
 export type ReactCardProps = {
     hass: Signal<unknown>;
@@ -55,6 +56,7 @@ const createReactCard = (
             this.shadowRoot.appendChild(style);
             this.root = ReactDOM.createRoot(this.shadowRoot);
 
+            HassService.createService(signals.hass, signals.energySelection);
             this.createEntitiesAndEdges();
             this.createSubEntitiesAndEdges();
             this.render();

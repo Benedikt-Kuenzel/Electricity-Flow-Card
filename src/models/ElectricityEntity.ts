@@ -1,6 +1,6 @@
 import { Signal } from "@preact/signals-react";
 import { ElectricityUnit, StateUnit } from "./ElectricityUnit";
-import { addHours, differenceInDays } from 'date-fns';
+import { HassRegistration, HassService } from "../utilities/hassService"
 
 export interface ElectricityState {
     value: number;
@@ -42,6 +42,7 @@ export abstract class ElectricityEntity {
     private hass: Signal<unknown>;
     private configKey: string;
     private energySelection: Signal<unknown>;
+    private hassRegistration: HassRegistration;
     private nodeId: string;
 
     //To be set by subclasses
@@ -121,6 +122,21 @@ export abstract class ElectricityEntity {
         this.primaryStateOutputUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["primaryOutputUnit"] : null);
         this.secondaryStateUnit.setUnitFromConfig(this.configKey ? this.config.value[this.configKey]["secondaryUnit"] : null);
 
+        if (this.hassRegistration) {
+            HassService.getInstance().unregister(this.hassRegistration);
+        }
+        this.hassRegistration = new HassRegistration();
+
+        if (this.primaryInputEntityId != null && this.primaryUsesDatePicker)
+            this.hassRegistration.entitiyIdsToFetch.push(this.primaryInputEntityId);
+        if (this.primaryOutputEntityId != null && this.primaryUsesDatePicker)
+            this.hassRegistration.entitiyIdsToFetch.push(this.primaryOutputEntityId);
+        if (this.secondaryEntityId != null && this.secondaryUsesDatePicker)
+            this.hassRegistration.entitiyIdsToFetch.push(this.secondaryEntityId);
+
+        this.hassRegistration.onValuesReceivedSignal.subscribe(() => { this.updateStateFromHassWs(); });
+        HassService.getInstance().registerForUpdates(this.hassRegistration);
+
     }
 
     public clearChildEntities() {
@@ -139,7 +155,29 @@ export abstract class ElectricityEntity {
         this.parentEntitiy = parentEntitiy;
     }
 
-    private async updateState(): Promise<void> {
+    private updateStateFromHassWs() {
+        if (this.primaryInputEntityId != null && this.primaryUsesDatePicker) {
+            var accumulatedStats = this.hassRegistration.valueOfEntity(this.primaryInputEntityId);
+            this.primaryStateInput = accumulatedStats ? accumulatedStats : 0;
+            this.primaryInputAvailable = accumulatedStats ? true : false;
+        }
+
+        if (this.primaryOutputEntityId != null && this.primaryUsesDatePicker) {
+            var accumulatedStats = this.hassRegistration.valueOfEntity(this.primaryOutputEntityId);
+            this.primaryStateOutput = accumulatedStats ? accumulatedStats : 0;
+            this.primaryOutputAvailable = accumulatedStats ? true : false;
+        }
+
+        if (this.secondaryEntityId != null && this.secondaryUsesDatePicker) {
+            var accumulatedStats = this.hassRegistration.valueOfEntity(this.secondaryEntityId);
+            this.secondaryState = accumulatedStats ? accumulatedStats : 0;
+            this.secondaryAvailable = accumulatedStats ? true : false;
+        }
+
+        this.onUpdated.value = this.onUpdated.value++;
+    }
+
+    private updateState(): Promise<void> {
         if (this.hass.value == null || this.hass.value["states"] == null) {
             this.primaryInputAvailable = false;
             this.primaryOutputAvailable = false;
@@ -172,25 +210,6 @@ export abstract class ElectricityEntity {
             this.secondaryState = Number(stateObjSecondary.state);
         }
 
-        //Otherwise get accumulated states from hass webservice if datepicker is used
-        if (stateObjPrimaryInput && this.primaryUsesDatePicker) {
-            var accumulatedStats = await this.getDateSelectedStatisticForEntities([this.primaryInputEntityId]);
-            this.primaryStateInput = accumulatedStats && accumulatedStats[0] ? accumulatedStats[0] : 0;
-            this.primaryInputAvailable = accumulatedStats && accumulatedStats[0] ? true : false;
-        }
-
-        if (stateObjPrimaryOutput && this.primaryUsesDatePicker) {
-            var accumulatedStats = await this.getDateSelectedStatisticForEntities([this.primaryOutputEntityId]);
-            this.primaryStateOutput = accumulatedStats && accumulatedStats[0] ? accumulatedStats[0] : 0;
-            this.primaryOutputAvailable = accumulatedStats && accumulatedStats[0] ? true : false;
-        }
-
-        if (stateObjSecondary && this.secondaryUsesDatePicker) {
-            var accumulatedStats = await this.getDateSelectedStatisticForEntities([this.secondaryEntityId]);
-            this.secondaryState = accumulatedStats && accumulatedStats[0] ? accumulatedStats[0] : 0;
-            this.secondaryAvailable = accumulatedStats && accumulatedStats[0] ? true : false;
-        }
-
         this.onUpdated.value = this.onUpdated.value++;
     }
 
@@ -200,51 +219,7 @@ export abstract class ElectricityEntity {
         this.secondaryStateUnit.setUnitFromHass(secondary ? secondary['attributes'] ? secondary['attributes']['unit_of_measurement'] : null : null);
     }
 
-    private async getDateSelectedStatisticForEntities(entitiyIds: string[]): Promise<number[]> {
-        if (!this.energySelection.value || !this.energySelection.value['end'] || !this.energySelection.value['start']) {
-            return null;
-        }
 
-        var dayDifference = differenceInDays(this.energySelection.value['end'] || new Date(), this.energySelection.value['start']);
-        var startMinHour = addHours(this.energySelection.value['start'], -1);
-        var period = dayDifference > 35 ? 'month' : dayDifference > 2 ? 'day' : 'hour';
-
-        var result: Statistics = await this.fetchStatistics(startMinHour, this.energySelection.value['end'], period, entitiyIds);
-
-
-        Object.values(result).forEach(stat => {
-            if (stat.length && new Date(stat[0].start) > startMinHour) {
-                stat.unshift({
-                    ...stat[0],
-                    start: startMinHour.toISOString(),
-                    end: startMinHour.toISOString(),
-                    sum: stat[0].sum,
-                    state: 0,
-                });
-            }
-        });
-
-        var statSums: number[] = [];
-        Object.values(result).forEach(stat => {
-            if (stat && stat.length > 0 && stat[0] != null && stat[stat.length - 1] != null) {
-                var totalIncrease: number = stat[stat.length - 1].sum - stat[0].sum;
-                statSums.push(totalIncrease);
-            }
-            statSums.push(0);
-        })
-
-        return statSums;
-    }
-
-    private async fetchStatistics(startTime: Date, endTime?: Date, period?: string, statistic_ids?: string[]): Promise<Statistics> {
-        return (<any>this.hass.value).callWS({
-            type: 'recorder/statistics_during_period',
-            start_time: startTime.toISOString(),
-            end_time: endTime?.toISOString(),
-            statistic_ids,
-            period
-        }) as Statistics;
-    }
 
     public getNodeId(): string {
         return this.nodeId;
