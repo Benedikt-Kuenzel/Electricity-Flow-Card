@@ -55,8 +55,11 @@ Therafter we discuss the configuration of individual nodes.
 | Parameter | Description | Example | Mandatory Parameter? |
 | ------------- | ------------- | ------------- | ------------- |
 | primaryOutputEntity  | The entity that measures the displayed output value of the node |  | Mandatory for solar, grid and battery nodes |
-| primaryInputEntity  |  The entity that measures the displayed input value of the node | 1000 | Mandatory for grid and battery nodes |
+| primaryInputEntity  |  The entity that measures the displayed input value of the node |  | Mandatory for grid and battery nodes |
 | secondaryEntity | A secondary value shown in the top of the node | For example, a % charge value of the battery | No |
+| primaryInputUnit | Overrides the unit received from the connected input entity in case something is misconfigured | W, kW, MW, GW, Wh kWh, MWh, GWh | No |
+| primaryOutputUnit | Overrides the unit received from the connected output entity in case something is misconfigured | W, kW, MW, GW, Wh kWh, MWh, GWh | No |
+| secondaryInputUnit | Overrides the unit received from the connected secondary entity in case something is misconfigured | W, kW, MW, GW, Wh kWh, MWh, GWh | No |
 | icon | An icon that should be displayed in the center of the node | Any mdi icon, for example mdi:home | No |
 | secondaryUsesDatePicker | If the secondary value should show momentary values or be influenced by a date picker on the dashboard | true or false | No |
 | colorOverride | Overrides the default color of the node | Any valid CSS color string, or leave unset to use defaults | No |
