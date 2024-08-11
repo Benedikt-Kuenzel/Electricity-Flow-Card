@@ -14,9 +14,9 @@ the missing value for you. All nodes are fully customizable, you can change thei
 
 ### Manual installation
 To install the Electricity-Flow-Card manually, first download the latest release electricity-flow-card.js file in the releases section of this repository.
-Then, upload this file to your assistants /www folder. Finally, head to Settings->Dashboards->Resources and add a new javascript module there.
-The URL should be /local/electricity-flow-card.js?v=1 . If you want to update the Electricity-Flow-Card, simply change the existing electricity-flow-card.js file to that of a later release.
-Then, increase the ?v=1 parameter in the resource URL and hit control+F5 to clean your cache. 
+Then, upload this file to your assistants `/www` folder. Finally, head to `Settings->Dashboards->Resources` and add a new javascript module there.
+The URL should be `/local/electricity-flow-card.js?v=1` . If you want to update the Electricity-Flow-Card, simply change the existing electricity-flow-card.js file to that of a later release.
+Then, increase the `?v=1` parameter in the resource URL and hit control+F5 to clean your cache. 
 
 ### Installation using HACS
 
@@ -30,7 +30,7 @@ Therafter we discuss the configuration of individual nodes.
 ### Overall parameters
 
 | Parameter | Description | Example | Mandatory Parameter? |
-| ------------- | ------------- | ------------- |
+| ------------- | ------------- | ------------- | ------------- |
 | primaryUsesDatePicker  | If the displayed primary data (energy/power consumption/production) is influenced by a date picker on the dashboard  | true or false | No |
 | kiloThreshold  | The threshold at which kW or kWh is displayed instead of WH/WH  | 1000 | No |
 | megaThreshold | The threshold at which MW or MWh is displayed instead of WH/WH | 1000000 | No |
@@ -53,7 +53,7 @@ Therafter we discuss the configuration of individual nodes.
 
 
 | Parameter | Description | Example | Mandatory Parameter? |
-| ------------- | ------------- | ------------- |
+| ------------- | ------------- | ------------- | ------------- |
 | primaryOutputEntity  | The entity that measures the displayed output value of the node |  | Mandatory for solar, grid and battery nodes |
 | primaryInputEntity  |  The entity that measures the displayed input value of the node | 1000 | Mandatory for grid and battery nodes |
 | secondaryEntity | A secondary value shown in the top of the node | For example, a % charge value of the battery | No |
